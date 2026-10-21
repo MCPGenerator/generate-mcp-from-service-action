@@ -1,0 +1,74 @@
+name: Generate MCP package from private service
+description: Calls a hosted SwaggerToMcp /generate endpoint and saves the returned package zip.
+
+inputs:
+  endpoint-url:
+    description: Full URL to the generator endpoint (for example https://generator.example.com/generate)
+    required: true
+  spec-path:
+    description: Path to the OpenAPI spec file produced earlier in the workflow.
+    required: true
+  customer-api-key:
+    description: Per-customer paid API key used for entitlement checks.
+    required: true
+  customer-api-key-header:
+    description: Header name used for the customer API key.
+    required: false
+    default: x-customer-api-key
+  output-name:
+    description: Optional generated package name override.
+    required: false
+  language:
+    description: Generated language (typescript, python, java).
+    required: false
+    default: typescript
+  transport-type:
+    description: Transport type to request (stdio or httpStream).
+    required: false
+    default: stdio
+  http-port:
+    description: HTTP port when transport-type is httpStream.
+    required: false
+    default: "3000"
+  support-auth:
+    description: Whether generated client auth helpers should be included.
+    required: false
+    default: "true"
+  output-zip-path:
+    description: Optional destination path for the downloaded zip artifact.
+    required: false
+
+outputs:
+  download-url:
+    description: Download URL returned by the generator endpoint.
+    value: ${{ steps.generate.outputs.download-url }}
+  zip-path:
+    description: Local path to the downloaded MCP package zip.
+    value: ${{ steps.generate.outputs.zip-path }}
+  package-title:
+    description: API title reported by the generator endpoint.
+    value: ${{ steps.generate.outputs.package-title }}
+  package-version:
+    description: API version reported by the generator endpoint.
+    value: ${{ steps.generate.outputs.package-version }}
+  operation-count:
+    description: Operation count reported by the generator endpoint.
+    value: ${{ steps.generate.outputs.operation-count }}
+
+runs:
+  using: composite
+  steps:
+    - id: generate
+      shell: pwsh
+      env:
+        INPUT_ENDPOINT_URL: ${{ inputs.endpoint-url }}
+        INPUT_SPEC_PATH: ${{ inputs.spec-path }}
+        INPUT_CUSTOMER_API_KEY: ${{ inputs.customer-api-key }}
+        INPUT_CUSTOMER_API_KEY_HEADER: ${{ inputs.customer-api-key-header }}
+        INPUT_OUTPUT_NAME: ${{ inputs.output-name }}
+        INPUT_LANGUAGE: ${{ inputs.language }}
+        INPUT_TRANSPORT_TYPE: ${{ inputs.transport-type }}
+        INPUT_HTTP_PORT: ${{ inputs.http-port }}
+        INPUT_SUPPORT_AUTH: ${{ inputs.support-auth }}
+        INPUT_OUTPUT_ZIP_PATH: ${{ inputs.output-zip-path }}
+      run: node (Join-Path $env:GITHUB_ACTION_PATH 'generate.mjs')
