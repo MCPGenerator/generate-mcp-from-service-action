@@ -37,6 +37,18 @@ inputs:
   output-zip-path:
     description: Optional destination path for the downloaded zip artifact.
     required: false
+  upload-artifact:
+    description: When true, upload the generated zip as a workflow artifact.
+    required: false
+    default: "false"
+  artifact-name:
+    description: Artifact name to use when upload-artifact is true.
+    required: false
+    default: mcp-server-package
+  artifact-retention-days:
+    description: Optional retention days for uploaded artifact.
+    required: false
+    default: "7"
 
 outputs:
   download-url:
@@ -54,6 +66,9 @@ outputs:
   operation-count:
     description: Operation count reported by the generator endpoint.
     value: ${{ steps.generate.outputs.operation-count }}
+  artifact-name:
+    description: Artifact name used for upload/download handoff.
+    value: ${{ steps.emit.outputs.artifact-name }}
 
 runs:
   using: composite
@@ -72,3 +87,18 @@ runs:
         INPUT_SUPPORT_AUTH: ${{ inputs.support-auth }}
         INPUT_OUTPUT_ZIP_PATH: ${{ inputs.output-zip-path }}
       run: node (Join-Path $env:GITHUB_ACTION_PATH 'generate.mjs')
+
+    - id: emit
+      shell: pwsh
+      env:
+        INPUT_ARTIFACT_NAME: ${{ inputs.artifact-name }}
+      run: |
+        "artifact-name=$env:INPUT_ARTIFACT_NAME" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+    - name: Upload generated MCP artifact
+      if: ${{ inputs.upload-artifact == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ steps.generate.outputs.zip-path }}
+        retention-days: ${{ inputs.artifact-retention-days }}
